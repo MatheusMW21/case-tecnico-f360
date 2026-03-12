@@ -1,6 +1,8 @@
 using JobService.API.Interfaces;
+using JobService.API.Repositories;
 using JobService.API.Services;
 using JobService.API.Workers;
+using MongoDB.Driver;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,6 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddHostedService<ProcessamentoTarefasWorker>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IJobRepository, MongoJobRepository>();
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
