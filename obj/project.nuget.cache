@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "5ZkP285qyFY=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\mathe\\code\\case-técnico-f360\\JobService.API\\JobService.API.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\mathe\\.nuget\\packages\\microsoft.aspnetcore.openapi\\9.0.11\\microsoft.aspnetcore.openapi.9.0.11.nupkg.sha512",
+    "C:\\Users\\mathe\\.nuget\\packages\\microsoft.openapi\\1.6.17\\microsoft.openapi.1.6.17.nupkg.sha512"
+  ],
+  "logs": []
+}
