@@ -14,10 +14,8 @@ public class ProcessamentoTarefasWorker : BackgroundService
     }
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        TimeSpan interval = TimeSpan.FromSeconds(10);
-        using PeriodicTimer timer = new PeriodicTimer(interval);
 
-        while (!stoppingToken.IsCancellationRequested && await timer.WaitForNextTickAsync(stoppingToken))
+        while (!stoppingToken.IsCancellationRequested)
         {
             _logger.LogInformation($"Processando tarefas - {DateTime.Now.TimeOfDay}");
             
