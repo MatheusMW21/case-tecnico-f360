@@ -51,18 +51,22 @@ public class ProcessamentoTarefasWorker : BackgroundService
             var repository = scope.ServiceProvider.GetRequiredService<IJobRepository>();
             var resolver = scope.ServiceProvider.GetRequiredService<JobHandlerResolver>();
             var messagePublisher = scope.ServiceProvider.GetRequiredService<IMessagePublisher>();
-            var job = JsonSerializer.Deserialize<Job>(eventArgs.Body.ToArray());
+            var jobMessage = JsonSerializer.Deserialize<Job>(eventArgs.Body.ToArray());
             
-            if(job is null)
+            if(jobMessage is null)
             {
                 _logger.LogError("Falha ao processar mensagem: O corpo da mensagem não pôde ser convertido para um Job.");
                 await channel.BasicAckAsync(eventArgs.DeliveryTag, false); 
                 return;
             }
 
-            job.Status = JobStatus.EmProcessamento;
-            job.UpdatedAt = DateTimeOffset.UtcNow; 
-            await repository.UpdateStatusAsync(job);
+            var job = await repository.TryClaimJobAsync(jobMessage.Id);
+            
+            if (job is null)
+            {
+                await channel.BasicAckAsync(eventArgs.DeliveryTag, false);
+                return;
+            }
 
             var handler = resolver.Resolve(job.TaskType);
 

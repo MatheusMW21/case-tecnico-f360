@@ -8,4 +8,5 @@ public interface IJobRepository
     Task<Job?> GetByIdAsync(Guid id);
     Task UpdateStatusAsync(Job job);
     Task<IEnumerable<Job>> GetPendingJobsAsync();
+    Task<Job?> TryClaimJobAsync(Guid id);
 }

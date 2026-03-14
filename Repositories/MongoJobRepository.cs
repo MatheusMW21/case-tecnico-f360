@@ -34,10 +34,28 @@ public class MongoJobRepository : IJobRepository
         return await _collection.Find(j => j.Status == JobStatus.Pendente).ToListAsync();
     }
 
-
     public async Task UpdateStatusAsync(Job job)
     {
         var filter = Builders<Job>.Filter.Eq(j => j.Id, job.Id);
         await _collection.ReplaceOneAsync(filter, job);
+    }
+
+    public async Task<Job?> TryClaimJobAsync(Guid id)
+    {
+        var filter = Builders<Job>.Filter.And(
+            Builders<Job>.Filter.Eq(j => j.Id, id),
+            Builders<Job>.Filter.Eq(j => j.Status, JobStatus.Pendente)
+        );
+
+        var update = Builders<Job>.Update
+            .Set(j => j.Status, JobStatus.EmProcessamento)
+            .Set(j => j.UpdatedAt, DateTimeOffset.UtcNow);
+
+        var options = new FindOneAndUpdateOptions<Job>
+        {
+            ReturnDocument = ReturnDocument.After
+        };
+
+        return await _collection.FindOneAndUpdateAsync(filter, update, options);
     }
 }
