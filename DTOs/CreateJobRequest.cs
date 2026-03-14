@@ -1,5 +1,3 @@
-using System;
-
 namespace JobService.API.DTOs;
 
 public class CreateJobRequest

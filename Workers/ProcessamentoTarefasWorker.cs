@@ -1,6 +1,7 @@
 using System.Text.Json;
 using JobService.API.Interfaces;
 using JobService.API.Models;
+using JobService.API.Services;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
@@ -48,6 +49,7 @@ public class ProcessamentoTarefasWorker : BackgroundService
         {
             using var scope = _provider.CreateScope();
             var repository = scope.ServiceProvider.GetRequiredService<IJobRepository>();
+            var resolver = scope.ServiceProvider.GetRequiredService<JobHandlerResolver>();
             var job = JsonSerializer.Deserialize<Job>(eventArgs.Body.ToArray());
             
             if(job is null)
@@ -60,13 +62,19 @@ public class ProcessamentoTarefasWorker : BackgroundService
             job.UpdatedAt = DateTimeOffset.UtcNow; 
             await repository.UpdateStatusAsync(job);
 
-            _logger.LogInformation($"A tarefa: {job.TaskType}. Está em processamento.");
+            var handler = resolver.Resolve(job.TaskType);
+
+            if (handler is null)
+            {
+                await channel.BasicAckAsync(eventArgs.DeliveryTag, false); 
+                return;
+            }
+
+            await handler.HandleAsync(job);
 
             job.Status = JobStatus.Concluido;
             job.UpdatedAt = DateTimeOffset.UtcNow;
             await repository.UpdateStatusAsync(job);
-
-            _logger.LogInformation($"{job.TaskType}, concluído com sucesso");
 
             await channel.BasicAckAsync(eventArgs.DeliveryTag, multiple: false);
         };

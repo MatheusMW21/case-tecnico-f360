@@ -1,4 +1,3 @@
-using System;
 using JobService.API.Interfaces;
 
 namespace JobService.API.Services;

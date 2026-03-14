@@ -1,5 +1,3 @@
-using System;
-
 namespace JobService.API.Interfaces;
 
 public interface IEmailService

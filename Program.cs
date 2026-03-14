@@ -1,4 +1,5 @@
 using JobService.API.DTOs;
+using JobService.API.Handlers;
 using JobService.API.Interfaces;
 using JobService.API.Models;
 using JobService.API.Repositories;
@@ -11,6 +12,9 @@ builder.Services.AddHostedService<ProcessamentoTarefasWorker>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IJobRepository, MongoJobRepository>();
 builder.Services.AddScoped<IMessagePublisher, RabbitMqPublisher>();
+builder.Services.AddScoped<IJobHandler, EnviarEmailHandler>();
+builder.Services.AddScoped<IJobHandler, GerarRelatorioHandler>();
+builder.Services.AddScoped<JobHandlerResolver>();
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
