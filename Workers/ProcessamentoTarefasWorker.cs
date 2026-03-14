@@ -50,10 +50,12 @@ public class ProcessamentoTarefasWorker : BackgroundService
             using var scope = _provider.CreateScope();
             var repository = scope.ServiceProvider.GetRequiredService<IJobRepository>();
             var resolver = scope.ServiceProvider.GetRequiredService<JobHandlerResolver>();
+            var messagePublisher = scope.ServiceProvider.GetRequiredService<IMessagePublisher>();
             var job = JsonSerializer.Deserialize<Job>(eventArgs.Body.ToArray());
             
             if(job is null)
             {
+                _logger.LogError("Falha ao processar mensagem: O corpo da mensagem não pôde ser convertido para um Job.");
                 await channel.BasicAckAsync(eventArgs.DeliveryTag, false); 
                 return;
             }
@@ -66,17 +68,45 @@ public class ProcessamentoTarefasWorker : BackgroundService
 
             if (handler is null)
             {
+                job.Status = JobStatus.Erro;
+                job.UpdatedAt = DateTimeOffset.UtcNow;
+                await repository.UpdateStatusAsync(job);
                 await channel.BasicAckAsync(eventArgs.DeliveryTag, false); 
                 return;
             }
 
-            await handler.HandleAsync(job);
+            try
+            {
+                await handler.HandleAsync(job);
 
-            job.Status = JobStatus.Concluido;
-            job.UpdatedAt = DateTimeOffset.UtcNow;
-            await repository.UpdateStatusAsync(job);
+                job.Status = JobStatus.Concluido;
+                job.UpdatedAt = DateTimeOffset.UtcNow;
+                await repository.UpdateStatusAsync(job);
 
-            await channel.BasicAckAsync(eventArgs.DeliveryTag, multiple: false);
+                await channel.BasicAckAsync(eventArgs.DeliveryTag, multiple: false);
+
+            } catch (Exception ex)
+            {
+                job.AttemptCount++;
+                job.ErrorMessage = ex.Message;
+                job.UpdatedAt = DateTimeOffset.UtcNow;
+
+                if (job.AttemptCount < job.MaxAttempts)
+                {
+                    job.Status = JobStatus.Pendente;
+                    await repository.UpdateStatusAsync(job);
+                    await messagePublisher.PublishAsync(job);
+
+                    await channel.BasicAckAsync(eventArgs.DeliveryTag, multiple: false); 
+                    _logger.LogWarning("Job {JobId} falhou. Tentativa {AttemptCount}/{MaxAttempts}. Republicando...", job.Id, job.AttemptCount, job.MaxAttempts);
+                } else
+                {
+                    job.Status = JobStatus.Erro;
+                    await repository.UpdateStatusAsync(job);
+                    await channel.BasicAckAsync(eventArgs.DeliveryTag, false); 
+                    _logger.LogError("Job {JobId} falhou após {AttemptCount} tentativas. Erro: {Message}", job.Id, job.AttemptCount, ex.Message);
+                }
+            }
         };
         
         await channel.BasicConsumeAsync(queue: _queueName, autoAck: false, consumer: consumer);
